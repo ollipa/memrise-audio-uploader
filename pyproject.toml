@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "memrise_audio_uploader"
+version = "0.1.0"
+description = "Memrise audio uploader"
+authors = ["Olli Paakkunainen <olli@paakkunainen.fi>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.25.1"
+lxml = "^4.6.3"
+google-cloud-texttospeech = "^2.2.0"
+pydantic = "^1.8.1"
+python-dotenv = "^0.15.0"
+
+[tool.poetry.dev-dependencies]
+ipython = "^7.21.0"
+mypy = "^0.812"
+black = "^20.8b1"
+isort = "^5.8.0"
+pylint = "^2.7.2"
+pytest = "^6.2.2"
+pytest-socket = "^0.3.5"
+flexmock = "^0.10.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pylint.master]
+no-docstring-rgx = "^_|^Meta$"
+attr-rgx = "id|[a-z_][a-z0-9_]{2,30}$"
+extension-pkg-whitelist = "pydantic"
+
+[tool.pylint.messages_control]
+disable = [
+    "too-many-instance-attributes",
+    "too-few-public-methods",
+    "logging-fstring-interpolation",
+    "too-many-function-args",
+    "too-many-arguments",
+    "bad-continuation",
+    "missing-class-docstring",
+    "too-many-locals",
+    "too-many-branches",
+]
+
+[tool.pylint.format]
+max-line-length = "100"
+
+[tool.pylint.string]
+check-quote-consistency = "yes"
+
+[tool.isort]
+line_length = 100
+
+[tool.black]
+line_length = 100
+
+[tool.pytest.ini_options]
+addopts = "--disable-socket"

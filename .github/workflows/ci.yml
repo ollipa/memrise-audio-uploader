@@ -1,0 +1,40 @@
+name: Test and lint
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+env:
+  TARGETS: memrise_audio_uploader tests
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run pylint
+        run: poetry run pylint ${TARGETS}
+
+      - name: Run isort
+        run: poetry run isort --check-only ${TARGETS}
+
+      - name: Run black
+        run: poetry run black --check ${TARGETS}
+
+      - name: Run tests
+        run: poetry run pytest
