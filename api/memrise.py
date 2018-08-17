@@ -1,7 +1,7 @@
 """Python SDK for Memrise API"""
 import logging
-import pickle
 import os
+import pickle
 from pathlib import Path
 
 import requests
@@ -32,41 +32,44 @@ class MemriseAPI:
         if self._session_file.is_file():
             try:
                 os.remove(self._session_file)
-            except EnvironmentError as e:
+            except EnvironmentError as exc:
                 logging.warning("%s: Unable to delete session information file (%s).",
-                                self.__qualname__, e)
+                                self.__qualname__, exc)
 
     def _save_session_file(self) -> None:
         """ Save session cookies to a file """
         try:
             with open(self._session_file, 'wb') as file:
                 pickle.dump(self._client.cookies, file)
-        except EnvironmentError as e:
+        except EnvironmentError as exc:
             logging.warning("%s: Unable to save session information to a file (%s).",
-                            self.__qualname__, e)
+                            self.__qualname__, exc)
+
+    def _load_session_file(self) -> RequestsCookieJar:
+        """ Load session cookies from a file """
+        try:
+            with open(self._session_file, 'rb') as file:
+                cookies = pickle.load(file)
+                if isinstance(cookies, RequestsCookieJar):
+                    return cookies
+                raise TypeError("Session file must contain 'RequestsCookieJar'")
+        except EnvironmentError as exc:
+            logging.warning("%s: Unable to read session information from a file (%s).",
+                            self.__qualname__, exc)
+        except TypeError as exc:
+            logging.warning("%s: %s.", self.__qualname__, exc)
+        return None
 
     def load_session(self) -> bool:
         """Load session from a file if it exists"""
-        # TODO refactor code here. Maybe make a method to load session data and another to check it
-        if self._session_store.is_file():
-            try:
-                with open(self._session_file, 'rb') as file:
-                    cookies = pickle.load(file)
-                    if isinstance(cookies, RequestsCookieJar):
-                        if self._check_cookies(cookies):
-                            self._client.cookies = cookies
-                            self._logged_in = True
-                        else:
-                            logging.info(
-                                "%s: Stored session data was invalid or expired.",
-                                self.__qualname__)
-                    else:
-                        raise TypeError("Session file must contain 'RequestsCookieJar'")
-            except EnvironmentError as e:
-                logging.warning("%s: Unable to read session information from a file (%s).",
-                                self.__qualname__, e)
-            except TypeError as e:
-                logging.warning("%s: %s.", self.__qualname__, e)
+        if self._session_file.is_file():
+            cookies = self._load_session_file()
+            if cookies is not None:
+                if self._check_cookies(cookies):
+                    self._client.cookies = cookies
+                    self._logged_in = True
+                    return self._logged_in
+            logging.info("%s: Stored session data was invalid or expired.", self.__qualname__)
         return self._logged_in
 
     def login(self, username: str, password: str) -> bool:
@@ -82,8 +85,8 @@ class MemriseAPI:
             # Referer is needed for the request to succeed
             response = self._client.post(login_url, data=payload,
                                          headers=dict(Referer=login_url), timeout=30)
-        except requests.exceptions.RequestException as e:
-            logging.error("%s: Failed to connect to Memrise server (%s).", self.__qualname__, e)
+        except requests.exceptions.RequestException as exc:
+            logging.error("%s: Failed to connect to Memrise server (%s).", self.__qualname__, exc)
 
         if response.status_code == 200:
             # Login succeeded
