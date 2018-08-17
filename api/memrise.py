@@ -4,12 +4,15 @@ import os
 import pickle
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 from dataclasses import dataclass, field
 
 # current pylint version does not recognize dataclasses as standard library import
 import requests  # pylint: disable=C0411
 from requests.cookies import RequestsCookieJar  # pylint: disable=C0411
+from lxml import html  # pylint: disable=C0411
+
+# TODO: Return exceptions on errors instead of empty lists
 
 
 @dataclass
@@ -46,7 +49,7 @@ class MemriseAPI:
         self._logged_in = False
         self._session_file = Path("session.p")
         self._store_session = store_session
-        self.courses: List[Course] = list()
+        self._courses: Dict[int, Course] = dict()
 
     def _check_cookies(self, cookies: RequestsCookieJar) -> None:
         """Check if session and csrf cookies exist"""
@@ -63,7 +66,7 @@ class MemriseAPI:
                 os.remove(self._session_file)
             except EnvironmentError as exc:
                 logging.warning("%s: Unable to delete session information file (%s).",
-                                self.__qualname__, exc)
+                                self._delete_session_file.__qualname__, exc)
 
     def _save_session_file(self) -> None:
         """ Save session cookies to a file """
@@ -72,7 +75,7 @@ class MemriseAPI:
                 pickle.dump(self._client.cookies, file)
         except EnvironmentError as exc:
             logging.warning("%s: Unable to save session information to a file (%s).",
-                            self.__qualname__, exc)
+                            self._save_session_file.__qualname__, exc)
 
     def _load_session_file(self) -> RequestsCookieJar:
         """ Load session cookies from a file """
@@ -84,63 +87,103 @@ class MemriseAPI:
                 raise TypeError("Session file must contain 'RequestsCookieJar'")
         except EnvironmentError as exc:
             logging.warning("%s: Unable to read session information from a file (%s).",
-                            self.__qualname__, exc)
+                            self._load_session_file.__qualname__, exc)
         except TypeError as exc:
-            logging.warning("%s: %s.", self.__qualname__, exc)
+            logging.warning("%s: %s.", self._load_session_file.__qualname__, exc)
         return None
 
-    def load_session(self) -> bool:
-        """Load session from a file if it exists."""
-        if self._session_file.is_file():
-            cookies = self._load_session_file()
-            if cookies is not None:
-                if self._check_cookies(cookies):
-                    self._client.cookies = cookies
-                    self._logged_in = True
-                    return self._logged_in
-            logging.info("%s: Stored session data was invalid or expired.", self.__qualname__)
-        return self._logged_in
-
-    def _parse_course_list(self, response: requests.Response) -> List[Course]:
+    def _parse_course_list(self, response: requests.Response) -> Dict[int, Course]:
         """Parses the course listing response from Memrise."""
         data = None
         try:
             data = response.json()
         except json.decoder.JSONDecodeError as exp:
-            logging.error("%s: Invalid JSON response from server. (%s)", self.__qualname__, exp)
-            return []
+            logging.error("%s: Invalid JSON response from server. (%s)",
+                          self._parse_course_list.__qualname__, exp)
+            return dict()
 
-        courses = []
+        courses = dict()
         try:
             for course in data["courses"]:
-                courses.append(Course(id=course['id'], name=course['name'], url=course['url'][1:]))
+                courses[course['id']] = Course(
+                    id=course['id'], name=course['name'], url=course['url'][1:])
         except KeyError as exp:
             logging.error("%s: Invalid course listing returned from server. (key=%s)",
-                          self.__qualname__, exp)
-            return []
+                          self._parse_course_list.__qualname__, exp)
+            return dict()
 
         return courses
 
-    def retrieve_courses(self) -> List[Course]:
+    @staticmethod
+    def _parse_level_list(response: requests.Response) -> Dict[int, Level]:
+        """Parses the level listing response from Memrise."""
+        course_html = html.fromstring(response.content)
+        level_html = course_html.xpath("//div[@data-level-id]")
+        levels = dict()
+        for level in level_html:
+            level_id = int(level.attrib['data-level-id'])
+            levels[level_id] = Level(id=level_id)
+        return levels
+
+    def get_levels(self, course: Course) -> List[Level]:
+        """ Retrieve course's levels from Memrise """
+        course = self._courses.get(course.id, None)
+
+        if course is None:
+            return []
+
+        try:
+            response = self._client.get(self._BASE_URL + course.url + "edit/", timeout=60)
+        except requests.exceptions.RequestException as exc:
+            logging.error("%s: Failed to connect to Memrise server (%s).",
+                          self.get_levels.__qualname__, exc)
+            return []
+
+        levels = dict()
+        if response.status_code == 200:
+            levels = self._parse_level_list(response)
+            if levels:
+                course.levels = levels
+        else:
+            logging.error("%s: Unable to retrieve levels (HTTP=%s).",
+                          self.get_levels.__qualname__, response.status_code)
+            return []
+        return list(levels.values())
+
+    def get_courses(self) -> List[Course]:
         """Retrieve the courses where the logged in user has edit permissions."""
         try:
             response = self._client.get(self._BASE_URL + "ajax/courses/dashboard/" +
                                         "?courses_filter=teaching&get_review_count=false",
                                         timeout=60)
         except requests.exceptions.RequestException as exc:
-            logging.error("%s: Failed to connect to Memrise server (%s).", self.__qualname__, exc)
+            logging.error("%s: Failed to connect to Memrise server (%s).",
+                          self.get_courses.__qualname__, exc)
             return []
 
+        courses = dict()
         if response.status_code == 200:
             courses = self._parse_course_list(response)
             if courses:
-                self.courses = courses
+                self._courses = courses
         else:
-            logging.error("%s: Login failed. Invalid username or password (HTTP=%s).",
-                          self.__qualname__, response.status_code)
+            logging.error("%s: Unable to retrieve courses (HTTP=%s).",
+                          self.get_courses.__qualname__, response.status_code)
             return []
 
-        return courses
+        return list(courses.values())
+
+    def load_session(self) -> bool:
+        """Load session from a file if it exists."""
+        if self._session_file.is_file():
+            cookies = self._load_session_file()
+            if cookies is not None and self._check_cookies(cookies):
+                self._client.cookies = cookies
+                self._logged_in = True
+                return self._logged_in
+            logging.info("%s: Stored session data was invalid or expired.",
+                         self.load_session.__qualname__)
+        return self._logged_in
 
     def login(self, username: str, password: str) -> bool:
         """Login to Memrise to get session cookie"""
@@ -156,7 +199,8 @@ class MemriseAPI:
             response = self._client.post(login_url, data=payload,
                                          headers=dict(Referer=login_url), timeout=30)
         except requests.exceptions.RequestException as exc:
-            logging.error("%s: Failed to connect to Memrise server (%s).", self.__qualname__, exc)
+            logging.error("%s: Failed to connect to Memrise server (%s).",
+                          self.login.__qualname__, exc)
             return False
 
         if response.status_code == 200:
@@ -168,6 +212,6 @@ class MemriseAPI:
             self._logged_in = False
             self._client = requests.session()
             logging.error("%s: Login failed. Invalid username or password (HTTP=%s).",
-                          self.__qualname__, response.status_code)
+                          self.login.__qualname__, response.status_code)
 
         return self._logged_in
