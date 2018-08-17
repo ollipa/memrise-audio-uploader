@@ -4,7 +4,6 @@ import os
 import json
 from pathlib import Path
 from typing import Tuple, List
-from dataclasses import dataclass, field
 
 # current pylint version does not recognize dataclasses as standard library import
 import requests  # pylint: disable=C0411
@@ -16,31 +15,7 @@ from api.memrise import MemriseAPI
 BASE_URL = "https://www.memrise.com/"
 
 
-@dataclass
-class Word:
-    """ Stores word related data """
-    id: int
-    text: str
-    column_number: int
-
-
-@dataclass
-class Level:
-    """ Stores level related data """
-    id: int
-    words: List[Word] = field(default_factory=list)
-
-
-@dataclass
-class Course:
-    """ Stores course related data """
-    id: int
-    name: str
-    url: str
-    levels: List[Level] = field(default_factory=list)
-
-
-def getCredentials() -> Tuple[str, str]:
+def get_credentials() -> Tuple[str, str]:
     """ Prompt for username and password """
     username = input("Username: ")
     password = getpass.getpass()
@@ -153,13 +128,11 @@ def main() -> None:
     """ Main program """
 
     mapi = MemriseAPI()
-
-    username, password = getCredentials()
-
+    username, password = get_credentials()
     mapi.login(username, password)
+    courses = mapi.retrieve_courses()
 
     client = requests.session()
-    courses = retrieveCourses(client)
 
     gapi_client = create_client()
 
