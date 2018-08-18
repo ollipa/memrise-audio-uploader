@@ -23,6 +23,7 @@ class Word:
     id: int
     text: str
     column_number: int
+    audio_count: int
     _client: requests.Session
 
 
@@ -33,6 +34,52 @@ class Level:
     name: str
     _client: requests.Session
     words: List[Word] = field(default_factory=list)
+
+    def _parse_word_list(self, response: requests.Response) -> List[Word]:
+        """Parses the word listing response from Memrise."""
+        try:
+            data = response.json()
+        except json.decoder.JSONDecodeError as exp:
+            logging.error("%s: Invalid JSON response from server. (%s)",
+                          self._parse_word_list.__qualname__, exp)
+            return list()
+
+        words = list()
+        tree = html.fromstring(data["rendered"])
+        words_html = tree.xpath("//tr[contains(@class, 'thing')]")
+        for word in words_html:
+            word_id = word.attrib['data-thing-id']
+            try:
+                word_text = word.xpath("td[2]/div/div/text()")[0]
+                column_number = word.xpath("td[contains(@class, 'audio')]/@data-key")[0]
+            except IndexError:
+                logging.warning("%s: Failed to parse word (word_id=%s).",
+                                self._parse_word_list.__qualname__, word_id)
+                continue
+            audio_count = len(word.xpath(
+                "td[contains(@class, 'audio')]/div/div[contains(@class, 'dropdown-menu')]/div"))
+            words.append(Word(id=word_id, text=word_text, column_number=column_number,
+                              audio_count=audio_count, _client=self._client))
+
+        return words
+
+    def get_words(self) -> List[Word]:
+        """ Retrieves words in a level and returns a list containing all the words."""
+        try:
+            response = self._client.get(
+                _BASE_URL + "ajax/level/editing_html/?level_id=" + str(self.id), timeout=60)
+        except requests.exceptions.RequestException as exc:
+            logging.error("%s: Failed to connect to Memrise server (%s).",
+                          self.get_words.__qualname__, exc)
+            return list()
+
+        words = self._parse_word_list(response)
+
+        if words:
+            self.words = words
+            return words
+
+        return list()
 
 
 @dataclass
@@ -135,7 +182,6 @@ class MemriseAPI:
 
     def _parse_course_list(self, response: requests.Response) -> Dict[int, Course]:
         """Parses the course listing response from Memrise."""
-        data = None
         try:
             data = response.json()
         except json.decoder.JSONDecodeError as exp:
