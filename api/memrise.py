@@ -26,6 +26,65 @@ class Word:
     audio_count: int
     _client: requests.Session
 
+    def remove_audio(self) -> bool:
+        """Remove all audio from a word."""
+        referer = _BASE_URL + "course"
+
+        url = _BASE_URL + "ajax/thing/column/delete_from/"
+
+        for file_id in range(1, self.audio_count + 1):
+            payload = {
+                "thing_id": self.id,
+                "column_key": self.column_number,
+                "cell_type": "column",
+                "file_id": file_id,
+                "csrfmiddlewaretoken": self._client.cookies['csrftoken']
+            }
+
+            try:
+                response = self._client.post(url, headers=dict(
+                    Referer=referer), data=payload, timeout=60)
+            except requests.exceptions.RequestException as exc:
+                logging.error("%s: Failed to connect to Memrise server (%s).",
+                              self.remove_audio.__qualname__, exc)
+                continue
+
+            if response.status_code != 200:
+                logging.error("%s: Unable to delete audio (HTTP=%s).",
+                              self.remove_audio.__qualname__, response.status_code)
+
+            self.audio_count -= 1
+
+        return True if self.audio_count < 1 else False
+
+    def upload_audio(self, audio: bytes) -> bool:
+        """Upload audio file to for a word. Audio should be in mp3 format."""
+        referer = _BASE_URL + "course"
+        files = {'f': ('audio.mp3', audio, 'audio/mp3')}
+
+        payload = {
+            "thing_id": self.id,
+            "cell_id": self.column_number,
+            "cell_type": "column",
+            "csrfmiddlewaretoken": self._client.cookies['csrftoken']}
+
+        url = _BASE_URL + "ajax/thing/cell/upload_file/"
+
+        try:
+            response = self._client.post(url, files=files, headers=dict(
+                Referer=referer), data=payload, timeout=60)
+        except requests.exceptions.RequestException as exc:
+            logging.error("%s: Failed to connect to Memrise server (%s).",
+                          self.upload_audio.__qualname__, exc)
+            return False
+
+        if response.status_code == 200:
+            return True
+
+        logging.error("%s: Unable to upload audio (HTTP=%s).",
+                      self.upload_audio.__qualname__, response.status_code)
+        return False
+
 
 @dataclass
 class Level:
