@@ -14,6 +14,8 @@ from lxml import html  # pylint: disable=C0411
 
 # TODO: Return exceptions on errors instead of empty lists
 
+_BASE_URL = "https://www.memrise.com/"
+
 
 @dataclass
 class Word:
@@ -21,12 +23,15 @@ class Word:
     id: int
     text: str
     column_number: int
+    _client: requests.Session
 
 
 @dataclass
 class Level:
     """ Stores level related data """
     id: int
+    name: str
+    _client: requests.Session
     words: List[Word] = field(default_factory=list)
 
 
@@ -36,13 +41,49 @@ class Course:
     id: int
     name: str
     url: str
-    levels: List[Level] = field(default_factory=list)
+    _client: requests.Session
+    levels: Dict[int, Level] = field(default_factory=list)
+
+    @staticmethod
+    def _parse_level_name(level: html.HtmlElement) -> str:
+        name = str(level.xpath(
+            "div[contains(@class,'level-header')]/h3[contains(@class, 'level-name')]/text()").pop())
+        return name.replace('\\n', '').strip()
+
+    def _parse_level_list(self, response: requests.Response) -> Dict[int, Level]:
+        """Parses the level listing response from Memrise."""
+        course_html = html.fromstring(response.content)
+        level_html = course_html.xpath("//div[@data-level-id]")
+        levels = dict()
+        for level in level_html:
+            level_id = int(level.attrib['data-level-id'])
+            level_name = self._parse_level_name(level)
+            levels[level_id] = Level(id=level_id, name=level_name, _client=self._client)
+        return levels
+
+    def get_levels(self) -> List[Level]:
+        """ Retrieve course's levels from Memrise """
+        try:
+            response = self._client.get(_BASE_URL + self.url + "edit/", timeout=60)
+        except requests.exceptions.RequestException as exc:
+            logging.error("%s: Failed to connect to Memrise server (%s).",
+                          self.get_levels.__qualname__, exc)
+            return []
+
+        levels = dict()
+        if response.status_code == 200:
+            levels = self._parse_level_list(response)
+            if levels:
+                self.levels = levels
+        else:
+            logging.error("%s: Unable to retrieve levels (HTTP=%s).",
+                          self.get_levels.__qualname__, response.status_code)
+            return []
+        return list(levels.values())
 
 
 class MemriseAPI:
     """Contains the implementation for Memrise API calls"""
-
-    _BASE_URL = "https://www.memrise.com/"
 
     def __init__(self, store_session: bool = False):
         self._client = requests.session()
@@ -106,7 +147,8 @@ class MemriseAPI:
         try:
             for course in data["courses"]:
                 courses[course['id']] = Course(
-                    id=course['id'], name=course['name'], url=course['url'][1:])
+                    id=course['id'], name=course['name'],
+                    url=course['url'][1:], _client=self._client)
         except KeyError as exp:
             logging.error("%s: Invalid course listing returned from server. (key=%s)",
                           self._parse_course_list.__qualname__, exp)
@@ -114,46 +156,10 @@ class MemriseAPI:
 
         return courses
 
-    @staticmethod
-    def _parse_level_list(response: requests.Response) -> Dict[int, Level]:
-        """Parses the level listing response from Memrise."""
-        course_html = html.fromstring(response.content)
-        level_html = course_html.xpath("//div[@data-level-id]")
-        levels = dict()
-        for level in level_html:
-            level_id = int(level.attrib['data-level-id'])
-            levels[level_id] = Level(id=level_id)
-        return levels
-
-    def get_levels(self, course: Course) -> List[Level]:
-        """ Retrieve course's levels from Memrise """
-        course = self._courses.get(course.id, None)
-
-        if course is None:
-            return []
-
-        try:
-            response = self._client.get(self._BASE_URL + course.url + "edit/", timeout=60)
-        except requests.exceptions.RequestException as exc:
-            logging.error("%s: Failed to connect to Memrise server (%s).",
-                          self.get_levels.__qualname__, exc)
-            return []
-
-        levels = dict()
-        if response.status_code == 200:
-            levels = self._parse_level_list(response)
-            if levels:
-                course.levels = levels
-        else:
-            logging.error("%s: Unable to retrieve levels (HTTP=%s).",
-                          self.get_levels.__qualname__, response.status_code)
-            return []
-        return list(levels.values())
-
     def get_courses(self) -> List[Course]:
         """Retrieve the courses where the logged in user has edit permissions."""
         try:
-            response = self._client.get(self._BASE_URL + "ajax/courses/dashboard/" +
+            response = self._client.get(_BASE_URL + "ajax/courses/dashboard/" +
                                         "?courses_filter=teaching&get_review_count=false",
                                         timeout=60)
         except requests.exceptions.RequestException as exc:
@@ -187,7 +193,7 @@ class MemriseAPI:
 
     def login(self, username: str, password: str) -> bool:
         """Login to Memrise to get session cookie"""
-        login_url = self._BASE_URL + "login/"
+        login_url = _BASE_URL + "login/"
 
         response = self._client.get(login_url, timeout=60)
 
