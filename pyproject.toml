@@ -1,9 +1,11 @@
 [tool.poetry]
 name = "memrise_audio_uploader"
-version = "0.1.0"
+version = "0.1.1"
 description = "Memrise audio uploader"
 authors = ["Olli Paakkunainen <olli@paakkunainen.fi>"]
 license = "MIT"
+readme = "README.md"
+repository = "https://github.com/ollipa/memrise-audio-uploader"
 
 [tool.poetry.dependencies]
 python = "^3.8"
