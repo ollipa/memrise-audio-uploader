@@ -2,6 +2,20 @@
 
 A command-line tool to upload text-to-speech audio to Memrise courses. Audio is generated using Google Text-to-Speech synthesizator.
 
+## Installation
+
+The tool can be installed using Pip with the following command:
+
+```sh
+pip install memrise-audio-uploader
+```
+
+After installation you can start the tool using Python:
+
+```sh
+python -m memrise_audio_uploader
+```
+
 ## Usage
 
 You can input your Memrise credentials when prompted in the command line or alternatively you can define them in a dotenv file. Save `MEMRISE_USERNAME` and/or `MEMRISE_PASSWORD` to a `.env` file in your current folder.
