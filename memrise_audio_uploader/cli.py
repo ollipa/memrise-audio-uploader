@@ -36,7 +36,7 @@ def memrise_login() -> memrise.MemriseClient:
     try:
         memrise_client = memrise.MemriseClient(settings.memrise_username, settings.memrise_password)
     except memrise.AuthenticationError:
-        print("Invalid username or password!")
+        print("Invalid username or password. Exiting...")
         sys.exit(1)
     return memrise_client
 
@@ -44,6 +44,10 @@ def memrise_login() -> memrise.MemriseClient:
 def select_course(client: memrise.MemriseClient) -> memrise.Course:
     """Print available courses and prompt the user to select a course."""
     courses = dict(enumerate(client.courses(), 1))
+    if not courses:
+        print("Could not find any courses with edit permissions. Exiting...")
+        sys.exit(1)
+
     print("\nAvailable courses:\n")
     for idx, course in courses.items():
         print(f"{idx}. {course.name}")
@@ -91,6 +95,10 @@ def select_voice(synthesizator: Synthesizator, language_code: str) -> Voice:
 def select_levels(course: memrise.Course) -> List[memrise.Level]:
     """Print available levels and prompt the user to select a course."""
     levels = dict(enumerate(course.levels(), 1))
+    if not levels:
+        print("Course does not have any levels. Exiting...")
+        sys.exit(1)
+
     print("\nAvailable levels:\n")
     print("0. Select all levels")
     for idx, level in levels.items():
