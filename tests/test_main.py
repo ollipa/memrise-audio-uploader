@@ -19,7 +19,7 @@ def set_envs():
 class TestMain:
     @pytest.fixture
     def mock_learnables(self):
-        learnable = flexmock(text="foo")
+        learnable = flexmock(text="foo", audio_count=0)
         learnable.should_receive("upload_audio").once()
         return [learnable]
 
