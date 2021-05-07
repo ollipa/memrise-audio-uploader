@@ -1,8 +1,8 @@
 # Memrise audio uploader
 
-![PyPI](https://img.shields.io/pypi/v/memrise-audio-uploader)
-![PyPI - License](https://img.shields.io/pypi/l/memrise-audio-uploader)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ollipa/memrise-audio-uploader/Test%20and%20lint)
+[![PyPI](https://img.shields.io/pypi/v/memrise-audio-uploader)](https://pypi.org/project/memrise-audio-uploader)
+[![PyPI - License](https://img.shields.io/pypi/l/memrise-audio-uploader)](./LICENSE)
+[![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ollipa/memrise-audio-uploader/Test%20and%20lint)](https://github.com/ollipa/memrise-audio-uploader/actions/workflows/ci.yml)
 
 A command-line tool to upload text-to-speech audio to Memrise courses. Audio is generated using Google Text-to-Speech synthesizator.
 
