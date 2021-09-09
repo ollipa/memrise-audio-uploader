@@ -177,12 +177,24 @@ class MemriseClient:
 
     def courses(self) -> List[Course]:
         """Retrieve the courses to which the logged in user has edit permissions."""
-        data = self._send_get_request(
-            "/ajax/courses/dashboard/",
-            params={"courses_filter": "teaching", "get_review_count": "false"},
-        )
-        course_list = models.CourseListing(**data)
-        return [Course(self, schema) for schema in course_list.courses]
+        all_courses: List[Course] = []
+        has_more_courses = True
+        offset = 0
+        while has_more_courses:
+            data = self._send_get_request(
+                "/ajax/courses/dashboard/",
+                params={
+                    "courses_filter": "teaching",
+                    "get_review_count": "false",
+                    "offset": offset,
+                    "limit": 8,
+                },
+            )
+            course_list = models.CourseListing(**data)
+            has_more_courses = course_list.has_more_courses
+            offset += 9
+            all_courses.extend(Course(self, schema) for schema in course_list.courses)
+        return all_courses
 
     def _login(self, username: str, password: str) -> None:
         """Login to Memrise to get session cookie."""

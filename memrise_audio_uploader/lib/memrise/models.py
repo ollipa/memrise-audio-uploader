@@ -52,8 +52,8 @@ class CourseListing(BaseModel):
     """Memrise course listing schema."""
 
     courses: List[CourseSchema]
-    to_review_total: int
-    has_more_courses: bool
+    to_review_total: int = 0
+    has_more_courses: bool = False
 
 
 class LevelSchema(BaseModel):

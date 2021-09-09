@@ -119,12 +119,12 @@ def select_levels(course: memrise.Course) -> List[memrise.Level]:
 
 def upload_audio(levels: List[memrise.Level], synthesizator: Synthesizator, voice: Voice) -> None:
     """Upload new audio to given levels."""
-    delete_existing = input("\nReplace existing audio before uploading (y/N): ").lower()
+    replace_existing = input("\nReplace existing audio? (y/N): ").lower()
     for level in levels:
         words = level.learnables()
         for word in words:
             if word.audio_count > 0:
-                if delete_existing == "y":
+                if replace_existing == "y":
                     print(f"Deleting audio in word '{word.text}'")
                     word.remove_audio()
                 else:

@@ -1,5 +1,5 @@
 """Google Text-To-Speech voice synthesizator."""
-from typing import List, Optional
+from typing import List
 
 import pydantic
 from google.cloud import texttospeech
@@ -19,7 +19,7 @@ class Synthesizator:
     def __init__(self) -> None:
         self._client = texttospeech.TextToSpeechClient()
 
-    def list_voices(self, language_code: Optional[str] = None) -> List[Voice]:
+    def list_voices(self, language_code: str) -> List[Voice]:
         """List available voices for given language code."""
         response = self._client.list_voices(language_code=language_code, timeout=30.0)
         voices = [
@@ -46,7 +46,8 @@ class Synthesizator:
             audio_encoding=texttospeech.AudioEncoding.MP3, speaking_rate=0.75
         )
 
-        response = self._client.synthesize_speech(
-            request={"input": input_text, "voice": voice, "audio_config": audio_config}
+        request = texttospeech.SynthesizeSpeechRequest(
+            input=input_text, voice=voice, audio_config=audio_config
         )
+        response = self._client.synthesize_speech(request=request)
         return bytes(response.audio_content)
