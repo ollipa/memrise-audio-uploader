@@ -135,7 +135,7 @@ def upload_audio(levels: List[memrise.Level], synthesizator: Synthesizator, voic
             audio = synthesizator.synthesize(word.text, voice)
             word.upload_audio(audio)
             count += 1
-    print(f"Uploaded audio new for {count} words")
+    print(f"Uploaded new audio for {count} words")
 
 
 def main() -> None:
