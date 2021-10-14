@@ -1,5 +1,6 @@
 """Memrise audio uploader command-line functionality."""
 import getpass
+import operator
 import signal
 import sys
 from types import FrameType
@@ -68,7 +69,11 @@ def select_voice(synthesizator: Synthesizator, language_code: str) -> Voice:
     """Print available voices and prompt the user to choose a voice."""
     voices: Dict[int, Voice] = {}
     while not voices:
-        voices = dict(enumerate(synthesizator.list_voices(language_code), 1))
+        voices = dict(
+            enumerate(
+                sorted(synthesizator.list_voices(language_code), key=operator.attrgetter("name")), 1
+            )
+        )
         if not voices:
             print(
                 f"No voices found for language code '{language_code}'. "
