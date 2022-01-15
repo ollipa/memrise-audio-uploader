@@ -4,10 +4,7 @@ import io
 import os
 
 import pytest
-from flexmock import flexmock
-
-from memrise_audio_uploader.cli import main
-from memrise_audio_uploader.lib import memrise, synthesizator
+from chainmock import mocker
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -19,39 +16,37 @@ def set_envs():
 class TestMain:
     @pytest.fixture
     def mock_learnables(self):
-        learnable = flexmock(text="foo", audio_count=0)
-        learnable.should_receive("upload_audio").once()
+        learnable = mocker(text="foo", audio_count=0)
+        learnable.mock("upload_audio").called_once()
         return [learnable]
 
     @pytest.fixture
     def mock_levels(self, mock_learnables):
-        level = flexmock(name="level 1")
-        level.should_receive("learnables").and_return(mock_learnables).once()
+        level = mocker(name="level 1")
+        level.mock("learnables").return_value(mock_learnables).called_once()
         return [level]
 
     @pytest.fixture
     def mock_courses(self, mock_levels):
-        course = flexmock(name="course 1", target_lang="en")
-        course.should_receive("levels").and_return(mock_levels).once()
+        course = mocker(name="course 1", target_lang="en")
+        course.mock("levels").return_value(mock_levels).called_once()
         return [course]
 
     @pytest.fixture(autouse=True)
     def mock_memrise_client(self, mock_courses):
-        mocked = flexmock()
-        flexmock(memrise.MemriseClient).new_instances(mocked)
-        mocked.should_receive("courses").and_return(mock_courses)
+        mocked = mocker("memrise_audio_uploader.lib.memrise.MemriseClient")
+        mocked.mock("courses").return_value(mock_courses)
 
     @pytest.fixture
     def mock_voices(self):
-        voice = flexmock(name="voice 1", gender=flexmock(name="female"))
+        voice = mocker(name="voice 1", gender=mocker(name="female"))
         return [voice]
 
     @pytest.fixture(autouse=True)
     def mock_synth_client(self, mock_voices, mock_learnables):
-        mocked = flexmock()
-        flexmock(synthesizator.Synthesizator).new_instances(mocked)
-        mocked.should_receive("list_voices").and_return(mock_voices).once()
-        mocked.should_receive("synthesize").times(len(mock_learnables))
+        mocked = mocker("memrise_audio_uploader.lib.synthesizator.Synthesizator")
+        mocked.mock("list_voices").return_value(mock_voices).called_once()
+        mocked.mock("synthesize").call_count(len(mock_learnables))
 
     @pytest.fixture(autouse=True)
     def mock_input(self, monkeypatch):
@@ -59,4 +54,6 @@ class TestMain:
         monkeypatch.setattr("sys.stdin", inputs)
 
     def test_it_works(self):
+        from memrise_audio_uploader.cli import main  # pylint: disable=import-outside-toplevel
+
         main()

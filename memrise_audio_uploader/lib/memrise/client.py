@@ -22,7 +22,7 @@ class Learnable:
     def __init__(
         self,
         client: MemriseClient,
-        id: int,  # pylint: disable=redefined-builtin
+        id: int,  # pylint: disable=redefined-builtin,invalid-name
         text: str,
         column_number: int,
         audio_count: int,
