@@ -232,7 +232,7 @@ class MemriseClient:
         try:
             response.raise_for_status()
         except requests.HTTPError as exc:
-            if response.status_code == 403:
+            if response.status_code == 400:
                 raise exceptions.AuthenticationError(f"Authentication failed: {exc}")
             raise exceptions.MemriseConnectionError(f"Unexpected response during login: {exc}")
 

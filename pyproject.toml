@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "memrise_audio_uploader"
-version = "0.3.0"
+version = "0.3.1"
 description = "Memrise audio uploader"
 authors = ["Olli Paakkunainen <olli@paakkunainen.fi>"]
 license = "MIT"
