@@ -11,8 +11,9 @@ from lxml import html
 
 from . import exceptions, models
 
-logger = logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
+_CLIENT_ID: Final[str] = "1e739f5e77704b57a703"
 _BASE_URL: Final[str] = "https://app.memrise.com"
 
 
@@ -198,22 +199,27 @@ class MemriseClient:
 
     def _login(self, username: str, password: str) -> None:
         """Login to Memrise to get session cookie."""
-        login_url = f"{_BASE_URL}/login/"
         try:
-            response = self._session.get(login_url, timeout=self._timeout)
+            response = self._session.get(
+                self._get_url("/v1.21/web/ensure_csrf"), timeout=self._timeout
+            )
         except requests.RequestException as exc:
             raise exceptions.MemriseConnectionError(
-                f"Connection failed to Memrise login page: {exc}"
+                f"Connection failed to Memrise ensure_csrf endpoint: {exc}"
             )
 
         payload = {
+            "client_id": _CLIENT_ID,
+            "grant_type": "password",
             "username": username,
             "password": password,
-            "csrfmiddlewaretoken": response.cookies["csrftoken"],
         }
         try:
             response = self._session.post(
-                login_url, data=payload, headers={"Referer": login_url}, timeout=self._timeout
+                self._get_url("/v1.21/auth/access_token/"),
+                data=payload,
+                headers={"Referer": self._get_url("/signin")},
+                timeout=self._timeout,
             )
         except requests.RequestException as exc:
             raise exceptions.MemriseConnectionError(f"Connection failed during login: {exc}")
@@ -259,7 +265,7 @@ class MemriseClient:
         payload["csrfmiddlewaretoken"] = self._session.cookies["csrftoken"]
         try:
             response = self._session.post(
-                f"{_BASE_URL}{path}",
+                self._get_url(path),
                 files=files,
                 headers={"Referer": referer},
                 data=payload,
@@ -276,3 +282,6 @@ class MemriseClient:
             )
 
         return response
+
+    def _get_url(self, path: str) -> str:
+        return f"{_BASE_URL}{path}"
