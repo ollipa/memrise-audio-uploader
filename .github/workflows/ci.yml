@@ -28,13 +28,13 @@ jobs:
         run: poetry install
 
       - name: Run pylint
-        run: poetry run pylint ${TARGETS}
+        run: make pylint
 
       - name: Run isort
-        run: poetry run isort --check-only ${TARGETS}
+        run: make isort
 
       - name: Run black
-        run: poetry run black --check ${TARGETS}
+        run: make black
 
       - name: Run tests
-        run: poetry run pytest
+        run: make test

@@ -13,32 +13,32 @@ test:
 	@printf '\n\n*****************\n'
 	@printf '$(color)Running tests$(off)\n'
 	@printf '*****************\n'
-	pytest
+	poetry run pytest
 
 .PHONY: mypy
 mypy:
 	@printf '\n\n*****************\n'
 	@printf '$(color)Running mypy$(off)\n'
 	@printf '*****************\n'
-	mypy ${TARGETS}
+	poetry run mypy ${TARGETS}
 
 .PHONY: isort
 isort:
 	@printf '\n\n*****************\n'
 	@printf '$(color)Running isort$(off)\n'
 	@printf '*****************\n'
-	isort --check-only ${TARGETS}
+	poetry run isort --check-only ${TARGETS}
 
 .PHONY: black
 black:
 	@printf '\n\n*****************\n'
 	@printf '$(color)Running black$(off)\n'
 	@printf '*****************\n'
-	black --check ${TARGETS}
+	poetry run black --check ${TARGETS}
 
 .PHONY: pylint
 pylint:
 	@printf '\n\n*****************\n'
 	@printf '$(color)Running pylint$(off)\n'
 	@printf '*****************\n'
-	pylint ${TARGETS}
+	poetry run pylint ${TARGETS}
