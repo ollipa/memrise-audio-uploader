@@ -6,7 +6,7 @@ import sys
 from types import FrameType
 from typing import Dict, List, Optional
 
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from memrise_audio_uploader.lib import memrise
 from memrise_audio_uploader.lib.synthesizator import Synthesizator, Voice
@@ -17,9 +17,7 @@ class Settings(BaseSettings):
 
     memrise_username: Optional[str]
     memrise_password: Optional[str]
-
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env")
 
 
 def memrise_login() -> memrise.MemriseClient:

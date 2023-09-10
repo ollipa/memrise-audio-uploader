@@ -65,7 +65,7 @@ class LevelSchema(BaseModel):
     title: str
     pool_id: int
     course_id: int
-    mission_id: Optional[int]
+    mission_id: Optional[int] = None
 
 
 class LevelListing(BaseModel):
