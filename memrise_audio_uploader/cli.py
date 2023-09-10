@@ -15,8 +15,8 @@ from memrise_audio_uploader.lib.synthesizator import Synthesizator, Voice
 class Settings(BaseSettings):
     """Application settings."""
 
-    memrise_username: Optional[str]
-    memrise_password: Optional[str]
+    memrise_username: Optional[str] = None
+    memrise_password: Optional[str] = None
     debug: Optional[bool] = False
     model_config = SettingsConfigDict(env_file=".env")
 
