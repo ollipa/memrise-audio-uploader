@@ -23,6 +23,14 @@ class Category(BaseModel):
     photo: HttpUrl
 
 
+class DashboardCourseSchema(BaseModel):
+    """Memrise dashboard course schema."""
+
+    id: str
+    name: str
+    slug: str
+
+
 class CourseSchema(BaseModel):
     """Memrise course schema."""
 
@@ -30,30 +38,21 @@ class CourseSchema(BaseModel):
     name: str
     slug: str
     url: str
-    description: str
+    description: Optional[str]
     photo: HttpUrl
     photo_small: HttpUrl
     photo_large: HttpUrl
     num_things: int
     num_levels: int
     num_learners: int
-    source: Language
-    target: Language
-    learned: int
-    review: int
-    ignored: int
-    ltm: int
-    difficult: int
-    category: Category
-    percent_complete: int
+    target_language_code: str
 
 
-class CourseListing(BaseModel):
-    """Memrise course listing schema."""
+class DashboardCourses(BaseModel):
+    """Memrise dashboard course listing schema."""
 
-    courses: List[CourseSchema]
-    to_review_total: int = 0
-    has_more_courses: bool = False
+    courses: List[DashboardCourseSchema]
+    has_more_pages: bool = False
 
 
 class LevelSchema(BaseModel):
@@ -65,7 +64,7 @@ class LevelSchema(BaseModel):
     title: str
     pool_id: int
     course_id: int
-    mission_id: Optional[int] = None
+    learnable_ids: list[int] = []
 
 
 class LevelListing(BaseModel):

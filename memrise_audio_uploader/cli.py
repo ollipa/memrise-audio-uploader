@@ -17,12 +17,12 @@ class Settings(BaseSettings):
 
     memrise_username: Optional[str]
     memrise_password: Optional[str]
+    debug: Optional[bool] = False
     model_config = SettingsConfigDict(env_file=".env")
 
 
-def memrise_login() -> memrise.MemriseClient:
+def memrise_login(settings: Settings) -> memrise.MemriseClient:
     """Login to Memrise and initialize client."""
-    settings = Settings()
     if not settings.memrise_username:
         settings.memrise_username = input("Username: ")
     else:
@@ -143,13 +143,19 @@ def upload_audio(levels: List[memrise.Level], synthesizator: Synthesizator, voic
 
 def main() -> None:
     """Main program."""
-    signal.signal(signal.SIGINT, signal_handler)  # CTRL+C handler
-    memrise_client = memrise_login()
-    course = select_course(memrise_client)
-    levels = select_levels(course)
-    synthesizator = Synthesizator()
-    voice = select_voice(synthesizator, course.target_lang)
-    upload_audio(levels, synthesizator, voice)
+    settings = Settings()
+    try:
+        signal.signal(signal.SIGINT, signal_handler)  # CTRL+C handler
+        memrise_client = memrise_login(settings)
+        course = select_course(memrise_client)
+        levels = select_levels(course)
+        synthesizator = Synthesizator()
+        voice = select_voice(synthesizator, course.target_lang)
+        upload_audio(levels, synthesizator, voice)
+    except Exception as exc:  # pylint: disable=broad-except
+        print(f"\nERROR: {exc}")
+        if settings.debug:
+            raise exc
 
 
 def signal_handler(_sig: int, _frame: Optional[FrameType]) -> None:

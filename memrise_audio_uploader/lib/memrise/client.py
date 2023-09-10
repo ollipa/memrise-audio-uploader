@@ -129,33 +129,32 @@ class Level:
 class Course:
     """Memrise course."""
 
-    def __init__(self, client: MemriseClient, schema: models.CourseSchema) -> None:
+    def __init__(self, client: MemriseClient, schema: models.DashboardCourseSchema) -> None:
         self._client = client
-        self._schema = schema
+        self._dashboard_schema = schema
+        self._schema: Optional[models.CourseSchema] = None
 
     @property
-    def id(self) -> int:
+    def id(self) -> str:
         """Course ID."""
-        return self._schema.id
+        return self._dashboard_schema.id
 
     @property
     def name(self) -> str:
         """Course name."""
-        return self._schema.name
-
-    @property
-    def source_lang(self) -> str:
-        """Source language."""
-        return self._schema.source.language_code
+        return self._dashboard_schema.name
 
     @property
     def target_lang(self) -> str:
         """Target language."""
-        return self._schema.target.language_code
+        if self._schema is None:
+            data = self._client._send_get_request(f"/v1.21/courses/{self.id}/")
+            self._schema = models.CourseSchema(**data["courses"][0])
+        return self._schema.target_language_code
 
     def levels(self) -> List[Level]:
         """Retrieve course's levels."""
-        data = self._client._send_get_request(f"/v1.17/courses/{self.id}/levels/")
+        data = self._client._send_get_request(f"/v1.21/courses/{self.id}/levels/")
         level_list = models.LevelListing(**data)
         return [Level(self._client, schema) for schema in level_list.levels]
 
@@ -179,20 +178,19 @@ class MemriseClient:
     def courses(self) -> List[Course]:
         """Retrieve the courses to which the logged in user has edit permissions."""
         all_courses: List[Course] = []
-        has_more_courses = True
+        has_more_pages = True
         offset = 0
-        while has_more_courses:
+        while has_more_pages:
             data = self._send_get_request(
-                "/ajax/courses/dashboard/",
+                "/v1.21/dashboard/courses/",
                 params={
-                    "courses_filter": "teaching",
-                    "get_review_count": "false",
+                    "filter": "teaching",
                     "offset": offset,
                     "limit": 8,
                 },
             )
-            course_list = models.CourseListing(**data)
-            has_more_courses = course_list.has_more_courses
+            course_list = models.DashboardCourses(**data)
+            has_more_pages = course_list.has_more_pages
             offset += 9
             all_courses.extend(Course(self, schema) for schema in course_list.courses)
         return all_courses
@@ -222,7 +220,35 @@ class MemriseClient:
                 timeout=self._timeout,
             )
         except requests.RequestException as exc:
-            raise exceptions.MemriseConnectionError(f"Connection failed during login: {exc}")
+            raise exceptions.MemriseConnectionError(
+                f"Connection failed to Memrise access_token endpoint: {exc}"
+            )
+
+        try:
+            data = response.json()
+        except json.decoder.JSONDecodeError as exc:
+            raise exceptions.ParseError(f"Invalid JSON response for a GET request: {exc}")
+
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as exc:
+            if response.status_code == 403:
+                raise exceptions.AuthenticationError(f"Authentication failed: {exc}")
+            raise exceptions.MemriseConnectionError(f"Unexpected response during login: {exc}")
+
+        try:
+            response = self._session.get(
+                self._get_url("/v1.21/auth/web/"),
+                timeout=self._timeout,
+                params={
+                    "invalidate_token_after": True,
+                    "token": data["access_token"]["access_token"],
+                },
+            )
+        except requests.RequestException as exc:
+            raise exceptions.MemriseConnectionError(
+                f"Connection failed to Memrise web auth endpoint: {exc}"
+            )
 
         try:
             response.raise_for_status()
@@ -235,7 +261,7 @@ class MemriseClient:
         """Send GET request and parse JSON response."""
         try:
             response = self._session.get(
-                f"{_BASE_URL}{path}",
+                self._get_url(path),
                 params=params,
                 timeout=self._timeout,
             )
