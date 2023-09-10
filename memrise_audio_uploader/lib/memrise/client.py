@@ -98,16 +98,16 @@ class Level:
         """Parse learnables (words) from Memrise API response."""
         learnables: List[Learnable] = []
         tree = html.fromstring(data["rendered"])
-        learnables_html = tree.xpath("//tr[contains(@class, 'thing')]")
+        learnables_html: list[Any] = tree.xpath("//tr[contains(@class, 'thing')]")  # type: ignore
         for learnable in learnables_html:
-            learnable_id = learnable.attrib["data-thing-id"]
+            learnable_id: int = learnable.attrib["data-thing-id"]
             try:
-                learnable_text = learnable.xpath("td[2]/div/div/text()")[0]
-                column_number = learnable.xpath("td[contains(@class, 'audio')]/@data-key")[0]
+                learnable_text: str = learnable.xpath("td[2]/div/div/text()")[0]
+                column_number: int = learnable.xpath("td[contains(@class, 'audio')]/@data-key")[0]
             except IndexError:
                 logging.warning("Failed to parse learnable id %s", learnable_id)
                 continue
-            audio_count = len(
+            audio_count: int = len(
                 learnable.xpath(
                     "td[contains(@class, 'audio')]/div/div[contains(@class, 'dropdown-menu')]/div"
                 )
