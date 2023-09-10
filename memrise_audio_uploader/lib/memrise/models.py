@@ -64,7 +64,7 @@ class LevelSchema(BaseModel):
     title: str
     pool_id: int
     course_id: int
-    learnable_ids: list[int] = []
+    learnable_ids: List[int] = []
 
 
 class LevelListing(BaseModel):
