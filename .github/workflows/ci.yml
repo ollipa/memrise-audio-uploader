@@ -2,9 +2,9 @@ name: Test and lint
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master]
+    branches: [main]
 
 env:
   TARGETS: memrise_audio_uploader tests
