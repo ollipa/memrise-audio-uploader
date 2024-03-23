@@ -1,4 +1,5 @@
 """Test main."""
+
 # pylint: disable=missing-docstring
 import io
 import os

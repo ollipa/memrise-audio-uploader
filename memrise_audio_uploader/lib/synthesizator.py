@@ -1,4 +1,5 @@
 """Google Text-To-Speech voice synthesizator."""
+
 from typing import List
 
 import pydantic

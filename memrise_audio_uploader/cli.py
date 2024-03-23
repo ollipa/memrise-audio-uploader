@@ -1,4 +1,5 @@
 """Memrise audio uploader command-line functionality."""
+
 import getpass
 import operator
 import signal

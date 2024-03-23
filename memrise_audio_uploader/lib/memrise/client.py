@@ -1,4 +1,5 @@
 """Memrise SDK client."""
+
 # pylint: disable=protected-access
 from __future__ import annotations
 
